@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { rateLimit } from 'express-rate-limit';
+
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import cors from 'cors';
@@ -16,17 +16,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-const registrationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  message: {
-    message: 'Too many registration attempts. Please try again later.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/api/auth', registrationLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 
 async function startServer(): Promise<void> {
   try {
