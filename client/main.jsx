@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import styled from 'styled-components';
 
@@ -93,7 +93,7 @@ function App() {
     );
   }
 
-  const [pendingEmail, setPendingEmail] = React.useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
 
   if (pendingEmail) {
     return (
