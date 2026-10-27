@@ -4,8 +4,9 @@ import styled from 'styled-components';
 
 import RegistrationForm from './components/RegistrationForm.jsx';
 import EmailVerification from './components/EmailVerification.jsx';
+import LoginForm from './components/LoginForm.jsx';
 
-const NoticePage = styled.main`
+const Page = styled.main`
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -54,7 +55,7 @@ const NoticeText = styled.p`
   overflow-wrap: anywhere;
 `;
 
-const BackButton = styled.button`
+const ActionButton = styled.button`
   width: 100%;
   padding: 13px;
   border: none;
@@ -64,28 +65,35 @@ const BackButton = styled.button`
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
 
   &:hover {
     background: #4338ca;
   }
+`;
 
-  &:focus-visible {
-    outline: 3px solid #a5b4fc;
-    outline-offset: 3px;
-  }
+const SecondaryButton = styled.button`
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: white;
+  color: #334155;
+  font-size: 14px;
+  cursor: pointer;
 `;
 
 function App() {
   const params = new URLSearchParams(window.location.search);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [mode, setMode] = useState('register');
+  const [accessToken, setAccessToken] = useState('');
 
-  const urlEmail = params.get('email') || '';
   const urlToken = params.get('token') || '';
 
-  if (urlEmail && urlToken) {
+  if (urlToken) {
     return (
       <EmailVerification
-        initialEmail={urlEmail}
         onVerified={() => {
           window.history.replaceState({}, '', '/');
         }}
@@ -93,11 +101,9 @@ function App() {
     );
   }
 
-  const [pendingEmail, setPendingEmail] = useState('');
-
   if (pendingEmail) {
     return (
-      <NoticePage>
+      <Page>
         <NoticeCard>
           <NoticeIcon aria-hidden="true">✉</NoticeIcon>
 
@@ -109,16 +115,59 @@ function App() {
             see the email, check your spam folder.
           </NoticeText>
 
-          <BackButton onClick={() => setPendingEmail('')}>
+          <ActionButton onClick={() => setPendingEmail('')}>
             Back to registration
-          </BackButton>
+          </ActionButton>
         </NoticeCard>
-      </NoticePage>
+      </Page>
+    );
+  }
+
+  if (accessToken) {
+    return (
+      <Page>
+        <NoticeCard>
+          <NoticeIcon aria-hidden="true">✓</NoticeIcon>
+
+          <NoticeTitle>You're logged in!</NoticeTitle>
+
+          <NoticeText>
+            Login was successful. Your access token is stored in the
+            application's memory.
+          </NoticeText>
+
+          <ActionButton
+            onClick={() => {
+              setAccessToken('');
+              setMode('login');
+            }}
+          >
+            Log out
+          </ActionButton>
+        </NoticeCard>
+      </Page>
     );
   }
 
   return (
-    <RegistrationForm onRegistered={({ email }) => setPendingEmail(email)} />
+    <Page>
+      {mode === 'login' ? (
+        <LoginForm
+          onLoggedIn={(token) => setAccessToken(token)}
+          onShowRegistration={() => setMode('register')}
+        />
+      ) : (
+        <div style={{ width: '100%', maxWidth: 440 }}>
+          <RegistrationForm
+            onRegistered={({ email }) => setPendingEmail(email)}
+          />
+
+          <SecondaryButton onClick={() => setMode('login')}>
+            Already have an account? Log in
+          </SecondaryButton>
+        </div>
+      )}
+    </Page>
   );
 }
 

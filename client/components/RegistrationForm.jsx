@@ -145,7 +145,7 @@ export default function RegistrationForm({ onRegistered }) {
     setLoading(true);
 
     try {
-      const { username, email, password, firstName, lastName } = form;
+      const { username, email, password, firstName, lastName, bio } = form;
 
       const payload = {
         username: username.trim(),
@@ -156,6 +156,7 @@ export default function RegistrationForm({ onRegistered }) {
               profile: {
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
+                bio: bio && bio.trim(),
               },
             }
           : {}),
@@ -251,7 +252,7 @@ export default function RegistrationForm({ onRegistered }) {
             />
           </Field>
 
-          <OptionalHeading>Profile (optional)</OptionalHeading>
+          <OptionalHeading>Profile</OptionalHeading>
 
           <Field>
             <Label htmlFor="firstName">First name</Label>
@@ -276,6 +277,20 @@ export default function RegistrationForm({ onRegistered }) {
               onChange={handleChange}
               placeholder="Last name"
               maxLength={50}
+              autoComplete="family-name"
+              disabled={loading}
+            />
+          </Field>
+
+          <Field>
+            <Label htmlFor="bio">Bio (optional)</Label>
+            <Input
+              id="bio"
+              name="bio"
+              value={form.bio}
+              onChange={handleChange}
+              placeholder="Bio"
+              maxLength={300}
               autoComplete="family-name"
               disabled={loading}
             />

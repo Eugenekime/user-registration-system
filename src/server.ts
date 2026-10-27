@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
-
+import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
+import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
 import cors from 'cors';
 
@@ -9,14 +10,17 @@ const app = express();
 app.use(
   cors({
     origin: 'http://localhost:5173',
+    credentials: true,
   })
 );
 
 const PORT = Number(process.env.PORT) || 3000;
-
+app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+
+app.use(errorHandler);
 
 async function startServer(): Promise<void> {
   try {

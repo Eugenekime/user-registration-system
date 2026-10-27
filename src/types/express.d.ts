@@ -1,0 +1,13 @@
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        sub: string;
+        type: string;
+        roles?: string[];
+      };
+    }
+  }
+}
+
+export {};

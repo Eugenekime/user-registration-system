@@ -113,10 +113,8 @@ const Message = styled.p`
   background: ${({ $error }) => ($error ? '#fef2f2' : '#f0fdf4')};
 `;
 
-export default function EmailVerification({ initialEmail = '', onVerified }) {
+export default function EmailVerification({ onVerified }) {
   const params = new URLSearchParams(window.location.search);
-
-  const [email, setEmail] = useState(params.get('email') || initialEmail);
 
   const [token, setToken] = useState(params.get('token') || '');
 
@@ -135,15 +133,11 @@ export default function EmailVerification({ initialEmail = '', onVerified }) {
       return;
     }
     try {
-      const response = await fetch(`${API_URL}/verify-email`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/verify-email?token=${token}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: email.trim(),
-          token: token.trim(),
-        }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -179,20 +173,6 @@ export default function EmailVerification({ initialEmail = '', onVerified }) {
         </Description>
 
         <Form onSubmit={handleSubmit}>
-          <Field>
-            <Label htmlFor="verification-email">Email address</Label>
-            <Input
-              id="verification-email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-              required
-              disabled={loading}
-            />
-          </Field>
-
           {message && (
             <Message
               $error={isError}
