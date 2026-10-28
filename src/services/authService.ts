@@ -174,6 +174,30 @@ export async function loginService(email: string, password: string) {
     refreshToken,
   };
 }
+export async function logoutService(refreshToken: string) {
+  let payload: string | JwtPayload;
+  try {
+    payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!);
+  } catch {
+    return true;
+  }
+
+  if (
+    typeof payload === 'string' ||
+    payload.type !== 'refresh' ||
+    typeof payload.sub !== 'string'
+  ) {
+    return true;
+  }
+
+  const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+
+  await RefreshToken.deleteOne({
+    tokenHash,
+    userId: payload.sub,
+  });
+  return true;
+}
 
 export async function refreshService(refreshToken: string) {
   let payload: string | JwtPayload;
@@ -201,13 +225,13 @@ export async function refreshService(refreshToken: string) {
   });
 
   if (!storedToken) {
-    throw new Error('Invalid refresh token');
+    throw new Error('Invalid refresh token or expired date');
   }
 
   const user = await User.findById(payload.sub);
 
   if (!user) {
-    throw new Error('Invalid refresh token');
+    throw new Error('Invalid refresh token or user deleted');
   }
 
   const accessToken = jwt.sign(

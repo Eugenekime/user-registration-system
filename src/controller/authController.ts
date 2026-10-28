@@ -6,6 +6,7 @@ import {
   verifyEmail,
   refreshService,
   resendVerificationEmail,
+  logoutService,
 } from '../services/authService.js';
 
 export async function registrationController(
@@ -230,5 +231,38 @@ export async function refreshTokenController(
     console.error('Refresh error:', error);
 
     next(error);
+  }
+}
+
+export async function logoutController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const refreshToken = req.cookies?.refreshToken;
+  if (typeof refreshToken !== 'string' || !refreshToken) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid refresh token',
+    });
+  }
+  try {
+    if (typeof refreshToken === 'string' && refreshToken) {
+      await logoutService(refreshToken);
+    }
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/api/auth',
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  } catch (error) {
+    return next(error);
   }
 }

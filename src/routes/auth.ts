@@ -6,6 +6,7 @@ import {
 import { registrationLimiter } from '../middleware/registrationLimiter.js';
 import {
   loginController,
+  logoutController,
   refreshTokenController,
   registrationController,
   resendVerificationController,
@@ -23,6 +24,7 @@ router.post(
 router.get('/verify-email', verifyController);
 router.post('/resend-verification', resendVerificationController);
 router.post('/login', loginValidator, loginController);
+router.post('/logout', logoutController);
 router.post('/refresh', refreshTokenController);
 
 export default router;
