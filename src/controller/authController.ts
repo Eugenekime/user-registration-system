@@ -141,7 +141,10 @@ export async function loginController(
   }
   const { email, password } = req.body;
   try {
-    const { accessToken, refreshToken } = await loginService(email, password);
+    const { accessToken, refreshToken, user } = await loginService(
+      email,
+      password
+    );
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -150,7 +153,7 @@ export async function loginController(
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ accessToken });
+    res.json({ accessToken, user });
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'Invalid email or password') {

@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 import type { Response, Request, NextFunction } from 'express';
-import jwt, { type JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 
 export const registrationValidator = [

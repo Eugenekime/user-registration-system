@@ -172,6 +172,12 @@ export async function loginService(email: string, password: string) {
   return {
     accessToken,
     refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      roles: user.roles,
+    },
   };
 }
 export async function logoutService(refreshToken: string) {

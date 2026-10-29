@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
+import userRoutes from './routes/user.js';
 import cors from 'cors';
 
 const app = express();
@@ -19,6 +20,7 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api', userRoutes);
 
 app.use(errorHandler);
 
