@@ -6,6 +6,7 @@ import {
 import {
   getAllUsersController,
   getUserByIdController,
+  patchUserByIdController,
 } from '../controller/adminController.js';
 import { patchUserValidation } from '../middleware/userValidation.js';
 
@@ -27,7 +28,8 @@ router.patch(
   '/users:id',
   authenticateToken,
   authorizeRole('admin'),
-  patchUserValidation
+  patchUserValidation,
+  patchUserByIdController
 );
 
 export default router;
