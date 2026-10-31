@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 
-export const userPatchValidation = [
+export const patchUserValidation = [
   body('username')
     .optional()
     .isString()

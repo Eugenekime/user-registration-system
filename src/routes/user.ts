@@ -1,11 +1,19 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/authValidation.js';
-import { getUserController } from '../controller/userController.js';
-import { userPatchValidation } from '../middleware/userValidation.js';
+import {
+  getUserController,
+  patchUserController,
+} from '../controller/userController.js';
+import { patchUserValidation } from '../middleware/userValidation.js';
 
 const router = Router();
 
 router.get('/me', authenticateToken, getUserController);
-router.patch('/me', authenticateToken, userPatchValidation);
+router.patch(
+  '/me',
+  authenticateToken,
+  patchUserValidation,
+  patchUserController
+);
 
 export default router;
