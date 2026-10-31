@@ -181,6 +181,7 @@ export function authenticateToken(
             (role): role is string => typeof role === 'string'
           )
         : [],
+      isEmailVerified: payload.isEmailVerified,
     };
 
     return next();
@@ -190,6 +191,28 @@ export function authenticateToken(
       message: 'Invalid or expired access token',
     });
   }
+}
+
+export function requireEmailVerified(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+  }
+  const { isEmailVerified } = req.user;
+  if (!isEmailVerified) {
+    return res.status(403).json({
+      success: false,
+      message: 'EMAIL_NOT_VERIFIED',
+    });
+  }
+
+  return next();
 }
 
 export function authorizeRole(...allowedRoles: string[]) {
@@ -206,7 +229,7 @@ export function authorizeRole(...allowedRoles: string[]) {
     if (!hasRole) {
       return res.status(403).json({
         success: false,
-        message: 'You do not have permission to perform this action',
+        message: 'FORBIDDEN',
       });
     }
 

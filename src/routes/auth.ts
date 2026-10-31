@@ -12,6 +12,7 @@ import {
   resendVerificationController,
   verifyController,
 } from '../controller/authController.js';
+import { validateRequest } from '../middleware/userValidation.js';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post(
 );
 router.get('/verify-email', verifyController);
 router.post('/resend-verification', resendVerificationController);
-router.post('/login', loginValidator, loginController);
+router.post('/login', loginValidator, validateRequest, loginController);
 router.post('/logout', logoutController);
 router.post('/refresh', refreshTokenController);
 

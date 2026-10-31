@@ -4,6 +4,7 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import RefreshToken from '../models/RefreshToken.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { sendVerificationEmail } from '../utils/emailService.js';
+import { AppError } from '../utils/AppError.js';
 
 export async function registrationUser(body: {
   email: string;
@@ -19,7 +20,7 @@ export async function registrationUser(body: {
     email: body.email,
   });
   if (existedUser) {
-    throw new Error('Email already exists');
+    throw new AppError('Email already exists', 409, 'EMAIL_ALREADY_EXISTS');
   }
   const hashedPassword = await bcrypt.hash(body.password, 12);
 
@@ -58,7 +59,11 @@ export async function verifyEmail(token: string) {
   }).select('+emailVerificationTokenHash +emailVerificationExpires');
 
   if (!user) {
-    throw new Error('Invalid or expired verification link');
+    throw new AppError(
+      'Invalid or expired verification link',
+      400,
+      'INVALID_OR_EXPIRED_VERIFICATION_TOKEN'
+    );
   }
   await User.updateOne(
     { _id: user._id },
@@ -78,11 +83,11 @@ export async function resendVerificationEmail(email: string) {
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new Error('User not found');
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
 
   if (user.isEmailVerified) {
-    throw new Error('Email already verified');
+    throw new AppError('Email already verified', 400, 'EMAIL_ALREADY_VERIFIED');
   }
 
   const verificationToken = randomBytes(32).toString('hex');
@@ -109,14 +114,16 @@ export async function loginService(email: string, password: string) {
   const user = await User.findOne({ email: email }).select('+passwordHash');
 
   if (!user) {
-    throw new Error('Invalid email or password');
+    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
   if (user.lockUntil && user.lockUntil > new Date()) {
     const remainingMs = user.lockUntil.getTime() - Date.now();
     const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
-    throw new Error(
-      `Too many failed login attempts. Please try again in ${remainingMinutes} minutes`
+    throw new AppError(
+      `Too many failed login attempts. Please try again in ${remainingMinutes} minutes`,
+      429,
+      'TOO_MANY_LOGIN_ATTEMPTS'
     );
   }
   const isMatch = await bcrypt.compare(password, user.passwordHash);
@@ -130,11 +137,15 @@ export async function loginService(email: string, password: string) {
 
     await user.save();
 
-    throw new Error('Invalid email or password');
+    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
   if (!user.isEmailVerified) {
-    throw new Error('Please verify your email first');
+    throw new AppError(
+      'Please verify your email first',
+      403,
+      'EMAIL_NOT_VERIFIED'
+    );
   }
 
   user.lockUntil = null;
@@ -146,6 +157,7 @@ export async function loginService(email: string, password: string) {
       sub: user._id.toString(),
       type: 'access',
       roles: user.roles,
+      isEmailVerified: user.isEmailVerified,
     },
     process.env.JWT_ACCESS_SECRET!,
     { expiresIn: '15m' }
@@ -211,7 +223,11 @@ export async function refreshService(refreshToken: string) {
   try {
     payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!);
   } catch {
-    throw new Error('Invalid refresh token');
+    throw new AppError(
+      'Invalid or expired refresh token',
+      401,
+      'INVALID_REFRESH_TOKEN'
+    );
   }
 
   if (
@@ -219,7 +235,7 @@ export async function refreshService(refreshToken: string) {
     payload.type !== 'refresh' ||
     typeof payload.sub !== 'string'
   ) {
-    throw new Error('Invalid refresh token');
+    throw new AppError('Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
   }
 
   const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
@@ -231,13 +247,21 @@ export async function refreshService(refreshToken: string) {
   });
 
   if (!storedToken) {
-    throw new Error('Invalid refresh token or expired date');
+    throw new AppError(
+      'Invalid or expired refresh token',
+      401,
+      'INVALID_REFRESH_TOKEN'
+    );
   }
 
   const user = await User.findById(payload.sub);
 
   if (!user) {
-    throw new Error('Invalid refresh token or user deleted');
+    throw new AppError(
+      'User associated with refresh token was not found',
+      401,
+      'INVALID_REFRESH_TOKEN'
+    );
   }
 
   const accessToken = jwt.sign(

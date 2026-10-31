@@ -1,28 +1,27 @@
 import User from '../models/User.js';
+import mongoose from 'mongoose';
 import type { PatchBody } from '../types/user.js';
+import { AppError } from '../utils/AppError.js';
 
 export async function getUserService(userId: string) {
-  if (typeof userId !== 'string' || !userId) {
-    throw new Error('Invalid or expired access token');
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new AppError('Invalid user ID', 401, 'INVALID_ACCESS_TOKEN');
   }
-
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).select('username profile');
 
   if (!user) {
-    throw new Error('User not found');
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
 
-  const allowedData = {
+  return {
     username: user.username,
     profile: user.profile,
   };
-
-  return allowedData;
 }
 
 export async function patchUserService(userId: string, body: PatchBody) {
-  if (typeof userId !== 'string' || !userId) {
-    throw new Error('Invalid or expired access token');
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new AppError('Invalid user ID', 401, 'INVALID_ACCESS_TOKEN');
   }
 
   const update: Record<string, unknown> = {};
@@ -43,7 +42,11 @@ export async function patchUserService(userId: string, body: PatchBody) {
     update['profile.bio'] = body.profile.bio;
   }
   if (Object.keys(update).length === 0) {
-    throw new Error('No fields provided for update');
+    throw new AppError(
+      'No fields provided for update',
+      400,
+      'NO_FIELDS_TO_UPDATE'
+    );
   }
 
   const user = await User.findByIdAndUpdate(
@@ -56,8 +59,11 @@ export async function patchUserService(userId: string, body: PatchBody) {
   );
 
   if (!user) {
-    throw new Error('User not found');
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
 
-  return user;
+  return {
+    username: user.username,
+    profile: user.profile,
+  };
 }

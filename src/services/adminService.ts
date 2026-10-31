@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import type { PatchBody } from '../types/user.js';
+import { AppError } from '../utils/AppError.js';
 
 export async function getAllUsersService(page: number, limit: number) {
   const skip = (page - 1) * limit;
@@ -25,7 +26,12 @@ export async function getAllUsersService(page: number, limit: number) {
 }
 
 export async function getUserByIdService(userId: string) {
-  const user = await User.findById(userId);
+  if (!User.db.base.Types.ObjectId.isValid(userId)) {
+    throw new AppError('Invalid user ID', 400, 'INVALID_USER_ID');
+  }
+  const user = await User.findById(userId).select(
+    '-passwordHash -refreshTokenJti'
+  );
 
   if (!user) {
     return null;
@@ -35,6 +41,10 @@ export async function getUserByIdService(userId: string) {
 }
 
 export async function patchUserByIdService(userId: string, body: PatchBody) {
+  if (!User.db.base.Types.ObjectId.isValid(userId)) {
+    throw new AppError('Invalid user ID', 400, 'INVALID_USER_ID');
+  }
+
   const update: Record<string, unknown> = {};
 
   if (body.username !== undefined) {
@@ -53,7 +63,11 @@ export async function patchUserByIdService(userId: string, body: PatchBody) {
     update['profile.bio'] = body.profile.bio;
   }
   if (Object.keys(update).length === 0) {
-    throw new Error('No fields provided for update');
+    throw new AppError(
+      'No fields provided for update',
+      400,
+      'NO_FIELDS_TO_UPDATE'
+    );
   }
   const user = await User.findByIdAndUpdate(
     userId,
@@ -62,7 +76,7 @@ export async function patchUserByIdService(userId: string, body: PatchBody) {
       new: true,
       runValidators: true,
     }
-  );
+  ).select('-passwordHash -refreshTokenJti');
 
   if (!user) {
     return null;

@@ -5,6 +5,7 @@ declare global {
         sub: string;
         type: string;
         roles?: string[];
+        isEmailVerified: boolean;
       };
     }
   }

@@ -4,7 +4,10 @@ import {
   getUserController,
   patchUserController,
 } from '../controller/userController.js';
-import { patchUserValidation } from '../middleware/userValidation.js';
+import {
+  patchUserValidation,
+  validateRequest,
+} from '../middleware/userValidation.js';
 
 const router = Router();
 
@@ -13,6 +16,7 @@ router.patch(
   '/me',
   authenticateToken,
   patchUserValidation,
+  validateRequest,
   patchUserController
 );
 

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { getUserService, patchUserService } from '../services/userService.js';
+import { AppError } from '../utils/AppError.js';
 
 export async function getUserController(
   req: Request,
@@ -8,10 +9,11 @@ export async function getUserController(
   next: NextFunction
 ) {
   if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired access token',
-    });
+    throw new AppError(
+      'Invalid or expired access token',
+      401,
+      'INVALID_ACCESS_TOKEN'
+    );
   }
   const { sub } = req.user;
 
@@ -19,25 +21,10 @@ export async function getUserController(
     const user = await getUserService(sub);
     return res.status(200).json({
       success: true,
-      user,
+      data: user,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'User not found') {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    if (
-      error instanceof Error &&
-      error.message === 'Invalid or expired access token'
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    next(error);
+    return next(error);
   }
 }
 
@@ -46,18 +33,12 @@ export async function patchUserController(
   res: Response,
   next: NextFunction
 ) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      errors: errors.array(),
-    });
-  }
   if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired access token',
-    });
+    throw new AppError(
+      'Invalid or expired access token',
+      401,
+      'INVALID_ACCESS_TOKEN'
+    );
   }
   const { username, profile } = req.body;
   const { sub } = req.user;
@@ -68,33 +49,9 @@ export async function patchUserController(
     });
     return res.status(200).json({
       success: true,
-      user: updatedUser,
+      data: updatedUser,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'User not found') {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    if (
-      error instanceof Error &&
-      error.message === 'Invalid or expired access token'
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    if (
-      error instanceof Error &&
-      error.message === 'No fields provided for update'
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    next(error);
+    return next(error);
   }
 }

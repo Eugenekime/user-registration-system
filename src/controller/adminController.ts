@@ -4,6 +4,7 @@ import {
   getUserByIdService,
   patchUserByIdService,
 } from '../services/adminService.js';
+import { AppError } from '../utils/AppError.js';
 
 export async function getAllUsersController(
   req: Request,
@@ -11,8 +12,8 @@ export async function getAllUsersController(
   next: NextFunction
 ) {
   try {
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+    const page = (req.query.page as number | undefined) ?? 1;
+    const limit = (req.query.limit as number | undefined) ?? 10;
     const result = await getAllUsersService(page, limit);
 
     return res.status(200).json({
@@ -29,20 +30,14 @@ export async function getUserByIdController(
   res: Response,
   next: NextFunction
 ) {
-  const { id } = req.params;
-  if (typeof id !== 'string') {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid user ID',
-    });
-  }
   try {
+    const { id } = req.params;
+    if (typeof id !== 'string') {
+      throw new AppError('Invalid user ID', 400, 'INVALID_USER_ID');
+    }
     const user = await getUserByIdService(id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
     return res.status(200).json({
       success: true,
@@ -60,38 +55,23 @@ export async function patchUserByIdController(
 ) {
   const { id } = req.params;
   const { username, profile } = req.body;
-  if (typeof id !== 'string') {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid user ID',
-    });
-  }
 
   try {
+    if (typeof id !== 'string') {
+      throw new AppError('Invalid user ID', 400, 'INVALID_USER_ID');
+    }
     const updatedUser = await patchUserByIdService(id, {
       username,
       profile,
     });
     if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
     return res.status(200).json({
       success: true,
       user: updatedUser,
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === 'No fields provided for update'
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
     return next(error);
   }
 }

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import {
   authenticateToken,
   authorizeRole,
@@ -8,7 +9,11 @@ import {
   getUserByIdController,
   patchUserByIdController,
 } from '../controller/adminController.js';
-import { patchUserValidation } from '../middleware/userValidation.js';
+import {
+  queryValidation,
+  patchUserValidation,
+  validateRequest,
+} from '../middleware/userValidation.js';
 
 const router = Router();
 
@@ -16,19 +21,22 @@ router.get(
   '/users',
   authenticateToken,
   authorizeRole('admin'),
+  ...queryValidation,
+  validateRequest,
   getAllUsersController
 );
 router.get(
-  '/users:id',
+  '/users/:id',
   authenticateToken,
   authorizeRole('admin'),
   getUserByIdController
 );
 router.patch(
-  '/users:id',
+  '/users/:id',
   authenticateToken,
   authorizeRole('admin'),
   patchUserValidation,
+  validateRequest,
   patchUserByIdController
 );
 

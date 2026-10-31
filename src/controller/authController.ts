@@ -8,6 +8,7 @@ import {
   resendVerificationEmail,
   logoutService,
 } from '../services/authService.js';
+import { AppError } from '../utils/AppError.js';
 
 export async function registrationController(
   req: Request,
@@ -41,12 +42,6 @@ export async function registrationController(
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Email already exists') {
-      return res.status(409).json({
-        success: false,
-        message: error.message,
-      });
-    }
     return next(error);
   }
 }
@@ -59,10 +54,13 @@ export async function verifyController(
   const token = req.query.token;
 
   if (typeof token !== 'string' || !token) {
-    return res.status(400).json({
-      success: false,
-      message: 'Verification token is required',
-    });
+    return next(
+      new AppError(
+        'Verification token is required',
+        400,
+        'VERIFICATION_TOKEN_REQUIRED'
+      )
+    );
   }
 
   try {
@@ -72,13 +70,6 @@ export async function verifyController(
       message: 'Email verified successfully',
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === 'Invalid or expired verification link'
-    ) {
-      return res.status(400).json({ success: false, message: error.message });
-    }
-
     console.error('Email verification error:', error);
 
     return next(error);
@@ -93,10 +84,7 @@ export async function resendVerificationController(
   const { email } = req.body;
 
   if (typeof email !== 'string' || !email) {
-    return res.status(400).json({
-      success: false,
-      message: 'Email is required',
-    });
+    return next(new AppError('Email is required', 400, 'EMAIL_REQUIRED'));
   }
 
   try {
@@ -107,22 +95,6 @@ export async function resendVerificationController(
       message: 'Verification email sent',
     });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === 'User not found') {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-
-      if (error.message === 'Email already verified') {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-    }
-
     return next(error);
   }
 }
@@ -132,13 +104,6 @@ export async function loginController(
   res: Response,
   next: NextFunction
 ) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      errors: errors.array(),
-    });
-  }
   const { email, password } = req.body;
   try {
     const { accessToken, refreshToken, user } = await loginService(
@@ -153,35 +118,14 @@ export async function loginController(
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ accessToken, user });
+    res.json({
+      success: true,
+      data: {
+        accessToken,
+        user,
+      },
+    });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === 'Invalid email or password') {
-        return res.status(401).json({
-          success: false,
-          message: error.message,
-        });
-      }
-
-      if (error.message === 'Please verify your email first') {
-        return res.status(403).json({
-          success: false,
-          message: error.message,
-        });
-      }
-
-      if (
-        error.message.startsWith(
-          'Too many failed login attempts. Please try again'
-        )
-      ) {
-        return res.status(429).json({
-          success: false,
-          message: error.message,
-        });
-      }
-    }
-
     console.error('Login error:', error);
 
     return next(error);
@@ -196,10 +140,9 @@ export async function refreshTokenController(
   const refreshToken = req.cookies?.refreshToken;
 
   if (typeof refreshToken !== 'string' || !refreshToken) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid refresh token',
-    });
+    return next(
+      new AppError('Refresh token is missing', 401, 'INVALID_REFRESH_TOKEN')
+    );
   }
 
   try {
@@ -217,23 +160,21 @@ export async function refreshTokenController(
       accessToken: tokens.accessToken,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Invalid refresh token') {
+    if (
+      error instanceof AppError &&
+      error.errorCode === 'INVALID_REFRESH_TOKEN'
+    ) {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/api/auth',
       });
-
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid refresh token',
-      });
     }
 
     console.error('Refresh error:', error);
 
-    next(error);
+    return next(error);
   }
 }
 
@@ -261,7 +202,7 @@ export async function logoutController(
       path: '/api/auth',
     });
 
-    return res.status(200).json({
+    return res.status(204).json({
       success: true,
       message: 'Logged out successfully',
     });

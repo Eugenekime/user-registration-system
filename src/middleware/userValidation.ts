@@ -1,4 +1,43 @@
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
+import type { Request, Response, NextFunction } from 'express';
+import { validationResult } from 'express-validator';
+import { AppError } from '../utils/AppError.js';
+
+export function validateRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return next(
+      new AppError(
+        errors
+          .array()
+          .map((error) => error.msg)
+          .join(', '),
+        400,
+        'VALIDATION_ERROR'
+      )
+    );
+  }
+
+  return next();
+}
+export const queryValidation = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer')
+    .toInt(),
+
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100')
+    .toInt(),
+];
 
 export const patchUserValidation = [
   body('username')

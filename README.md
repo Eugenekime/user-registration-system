@@ -20,8 +20,6 @@ You need two users:
 - **Normal user:** role `user`
 - **Admin user:** role `admin`
 
-> Tip: For development, you can seed test users when the server starts. Do not use hardcoded test credentials in production.
-
 ### 2. Login and get tokens
 
 Log in with the normal user. The refresh token will be stored automatically in an HTTP-only cookie.
