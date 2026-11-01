@@ -5,10 +5,18 @@ import {
 } from '../middleware/authValidation.js';
 import { validateRequest } from '../middleware/userValidation.js';
 import {
+  putTodoValidation,
   queryValidation,
+  paramIdValidation,
   todoValidation,
 } from '../middleware/todoValidation.js';
-import { getAllTodosController } from '../controller/todoController.js';
+import {
+  deleteTodoController,
+  getAllTodosController,
+  getTodoStatusController,
+  postTodoController,
+  putTodoController,
+} from '../controller/todoController.js';
 
 const router = Router();
 
@@ -25,7 +33,33 @@ router.post(
   authenticateToken,
   requireEmailVerified,
   ...todoValidation,
-  validateRequest
+  validateRequest,
+  postTodoController
 );
 
+router.put(
+  '/protected/todos',
+  authenticateToken,
+  requireEmailVerified,
+  ...paramIdValidation,
+  ...putTodoValidation,
+  validateRequest,
+  putTodoController
+);
+
+router.delete(
+  '/protected/todos',
+  authenticateToken,
+  requireEmailVerified,
+  ...paramIdValidation,
+  ...putTodoValidation,
+  validateRequest,
+  deleteTodoController
+);
+router.get(
+  '/protected/todos/status',
+  authenticateToken,
+  requireEmailVerified,
+  getTodoStatusController
+);
 export default router;

@@ -5,17 +5,9 @@ import RefreshToken from '../models/RefreshToken.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { sendVerificationEmail } from '../utils/emailService.js';
 import { AppError } from '../utils/AppError.js';
+import type { PostUser } from '../types/user.js';
 
-export async function registrationUser(body: {
-  email: string;
-  username: string;
-  password: string;
-  profile: {
-    firstName: string;
-    lastName: string;
-    bio?: string;
-  };
-}) {
+export async function registrationUser(body: PostUser) {
   const existedUser = await User.findOne({
     email: body.email,
   });
@@ -148,6 +140,14 @@ export async function loginService(email: string, password: string) {
     );
   }
 
+  if (!user.isActive) {
+    throw new AppError(
+      'Your account has been deactivated',
+      403,
+      'ACCOUNT_DEACTIVATED'
+    );
+  }
+
   user.lockUntil = null;
   user.failedLoginAttempts = 0;
   await user.save();
@@ -264,11 +264,27 @@ export async function refreshService(refreshToken: string) {
     );
   }
 
+  if (!user.isActive) {
+    throw new AppError(
+      'Your account has been deactivated',
+      403,
+      'ACCOUNT_DEACTIVATED'
+    );
+  }
+  if (!user.isEmailVerified) {
+    throw new AppError(
+      'Please verify your email first',
+      403,
+      'EMAIL_NOT_VERIFIED'
+    );
+  }
+
   const accessToken = jwt.sign(
     {
       sub: user._id.toString(),
       type: 'access',
       roles: user.roles,
+      isEmailVerified: user.isEmailVerified,
     },
     process.env.JWT_ACCESS_SECRET!,
     { expiresIn: '15m' }

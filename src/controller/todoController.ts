@@ -1,7 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../utils/AppError.js';
-import { validationResult } from 'express-validator';
-import { getAllTodoService } from '../services/todoService.js';
+import {
+  deleteTodoService,
+  getAllTodoService,
+  getTodoStatusService,
+  postTodoService,
+  putTodoService,
+} from '../services/todoService.js';
 
 export async function getAllTodosController(
   req: Request,
@@ -60,5 +65,125 @@ export async function postTodoController(
         'INVALID_ACCESS_TOKEN'
       );
     }
-  } catch (error) {}
+    const { sub } = req.user;
+    const { text, completed, priority } = req.body;
+    const data = await postTodoService(sub, { text, completed, priority });
+    return res.status(201).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function putTodoController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      throw new AppError(
+        'Invalid or expired access token',
+        401,
+        'INVALID_ACCESS_TOKEN'
+      );
+    }
+    if (!req.params.id) {
+      throw new AppError('Todo ID is required', 400, 'TODO_ID_REQUIRED');
+    }
+
+    if (typeof req.params.id !== 'string') {
+      throw new AppError(
+        'Todo ID must be string',
+        400,
+        'TODO_ID_MUST_BE_STRING'
+      );
+    }
+
+    const { text, completed, priority } = req.body;
+    const updatedTodo = await putTodoService(req.user.sub, req.params.id, {
+      text,
+      completed,
+      priority,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: updatedTodo,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function deleteTodoController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      throw new AppError(
+        'Invalid or expired access token',
+        401,
+        'INVALID_ACCESS_TOKEN'
+      );
+    }
+    if (!req.params.id) {
+      throw new AppError('Todo ID is required', 400, 'TODO_ID_REQUIRED');
+    }
+
+    if (typeof req.params.id !== 'string') {
+      throw new AppError(
+        'Todo ID must be string',
+        400,
+        'TODO_ID_MUST_BE_STRING'
+      );
+    }
+
+    const deletedTodo = await deleteTodoService(req.user.sub, req.params.id);
+    if (!deletedTodo) {
+      throw new AppError('Todo not found', 404, 'TODO_NOT_FOUND');
+    }
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getTodoStatusController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      throw new AppError(
+        'Invalid or expired access token',
+        401,
+        'INVALID_ACCESS_TOKEN'
+      );
+    }
+    if (!req.params.id) {
+      throw new AppError('Todo ID is required', 400, 'TODO_ID_REQUIRED');
+    }
+
+    if (typeof req.params.id !== 'string') {
+      throw new AppError(
+        'Todo ID must be string',
+        400,
+        'TODO_ID_MUST_BE_STRING'
+      );
+    }
+
+    const status = await getTodoStatusService(req.user.sub, req.params.id);
+    return res.status(200).json({
+      success: true,
+      data: status,
+    });
+  } catch (error) {
+    return next(error);
+  }
 }

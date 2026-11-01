@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import User from '../models/User.js';
 import type { Response, Request, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
@@ -136,7 +137,7 @@ export const loginValidator = [
     .withMessage('Password must contain at least one special character'),
 ];
 
-export function authenticateToken(
+export async function authenticateToken(
   req: Request,
   res: Response,
   next: NextFunction
@@ -172,16 +173,30 @@ export function authenticateToken(
         message: 'Invalid access token',
       });
     }
+    const user = await User.findById(payload.sub)
+      .select('isActive roles isEmailVerified')
+      .lean();
 
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'INVALID_ACCESS_TOKEN',
+        message: 'User not found',
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        error: 'ACCOUNT_DEACTIVATED',
+        message: 'Your account is deactivated',
+      });
+    }
     req.user = {
       sub: payload.sub,
       type: payload.type,
-      roles: Array.isArray(payload.roles)
-        ? payload.roles.filter(
-            (role): role is string => typeof role === 'string'
-          )
-        : [],
-      isEmailVerified: payload.isEmailVerified,
+      roles: user.roles,
+      isEmailVerified: user.isEmailVerified,
     };
 
     return next();
