@@ -173,7 +173,7 @@ Expected result:
 ```powershell
 $OTHER_TODO_ID = "ANOTHER_USERS_TODO_ID"
 
-curl.exe -i "$BASE_URL/api/protected-todos/$OTHER_TODO_ID" `
+curl.exe -i "$BASE_URL/api/protected/todos/$OTHER_TODO_ID" `
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
