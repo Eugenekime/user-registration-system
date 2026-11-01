@@ -1,108 +1,213 @@
-## Test Yourself / How to Test
+## Authorization and Protected Routes
 
-Follow these steps to run the server and test the authentication, user profile, and admin endpoints.
+### 1. What Is Protected and Why
 
-### 0. Start the server
+The API uses authentication and authorization middleware to prevent unauthorized access to private resources and administrative operations.
 
-```bash
-npm install
-npm run dev
+The following resources are protected:
+
+- **User profile:** Only authenticated users can view or update their own private profile.
+- **Todos:** Authenticated users can access and manage their own todos. A user cannot access or modify another user's todos.
+- **Email verification:** Certain protected operations require the user's email address to be verified.
+- **Admin endpoints:** Only users with the `admin` role can access administrative operations.
+- **Account status:** Deactivated accounts cannot access protected endpoints or refresh their authentication tokens.
+
+Public endpoints, such as registration, login, and public profile information, do not require authentication.
+
+### 2. Authorization Guards
+
+#### Authentication Guard (`authenticateToken`)
+
+Checks whether the request contains a valid access token.
+
+Responsibilities:
+
+- Extracts the access token from the `Authorization` header.
+- Verifies the JWT signature and expiration.
+- Checks that the token is an access token.
+- Retrieves the user from the database.
+- Checks whether the account is active.
+- Attaches the authenticated user's information to `req.user`.
+
+If authentication fails, the API returns `401 Unauthorized`.
+
+A deactivated account receives `403 Forbidden`.
+
+#### Email Verification Guard (`requireEmailVerified`)
+
+Checks whether the authenticated user's email address has been verified.
+
+Responsibilities:
+
+- Requires an authenticated user.
+- Checks `req.user.isEmailVerified`.
+- Prevents unverified users from accessing endpoints that require email verification.
+
+If the email address is not verified, the API returns `403 Forbidden`.
+
+#### Role Guard (`authorizeRole`)
+
+Restricts access based on the user's role.
+
+Responsibilities:
+
+- Reads the authenticated user's roles from `req.user.roles`.
+- Checks whether the user has one of the required roles.
+- Allows access only when the required role is present.
+
+For example:
+
+```ts
+router.get(
+  '/admin/users',
+  authenticateToken,
+  authorizeRole('admin'),
+  getUsersController
+);
 ```
 
-The server should be available at `http://localhost:3000`.
+Users without the required role receive `403 Forbidden`.
 
-### 1. Prepare test users
+#### Ownership Guard
 
-Use the registration endpoint from the previous project or seed users manually.
+Ensures that users can access or modify only resources they own.
 
-You need two users:
+For example, when accessing a todo, the server checks that its `userId` matches the authenticated user's ID.
 
-- **Normal user:** role `user`
-- **Admin user:** role `admin`
+The ownership check must be performed on the server using `req.user.sub`, not a user ID supplied by the client.
 
-### 2. Login and get tokens
+Example:
 
-Log in with the normal user. The refresh token will be stored automatically in an HTTP-only cookie.
+```ts
+const todo = await Todo.findOne({
+  _id: todoId,
+  userId: req.user.sub,
+});
 
-```bash
-curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"emailOrUsername":"user@example.com","password":"Password123!"}'
+if (!todo) {
+  throw new AppError('Todo not found', 404, 'TODO_NOT_FOUND');
+}
 ```
 
-**Expected result:**
+This prevents users from accessing another user's private data by changing an ID in the URL.
 
-- `200 OK`
-- Response contains an `accessToken`.
-- The server sets a refresh token in an HTTP-only cookie.
+### 3. Manual Testing
 
-Save the returned access token. You will need it in the following steps.
+The following examples use `curl.exe` and PowerShell.
 
-### 3. Access the protected route (`GET /api/me`)
+Replace the placeholder values with actual IDs and tokens from your application.
 
-Replace `<ACCESS_TOKEN>` with the access token received during login.
+Set the API URL:
 
-```bash
-curl -s http://localhost:3000/api/me \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```powershell
+$BASE_URL = "http://localhost:3000"
 ```
 
-**Expected result:**
+#### Test 1: Access a protected endpoint without authentication
 
-- `200 OK` with the authenticated user's profile.
-- `401 Unauthorized` if the token is missing, invalid, or expired.
-
-### 4. Update your own profile (`PATCH /api/me`)
-
-```bash
-curl -s -X PATCH http://localhost:3000/api/me \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
-  -d '{"profile":{"firstName":"New","lastName":"Name","bio":"Hello"}}'
+```powershell
+curl.exe -i "$BASE_URL/api/profile"
 ```
 
-**Expected result:**
+Expected result:
 
-- `200 OK` with the updated profile.
+- HTTP `401 Unauthorized`
+- Authentication error response.
 
-### 5. Access an admin route as a normal user
+#### Test 2: Access a protected endpoint with an access token
 
-```bash
-curl -s http://localhost:3000/api/admin/users \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```powershell
+$ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
+
+curl.exe -i "$BASE_URL/api/profile" `
+  -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-**Expected result:**
+Expected result:
 
-- `403 Forbidden` because the authenticated user does not have the `admin` role.
+- HTTP `200 OK`
+- The authenticated user's private profile is returned.
 
-### 6. Refresh the access token
+#### Test 3: Access an email-protected endpoint with an unverified account
 
-The refresh token is sent automatically from `cookies.txt`.
-
-```bash
-curl -i -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/refresh
+```powershell
+curl.exe -i "$BASE_URL/api/protected/todos" `
+  -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-**Expected result:**
+Expected result:
 
-- `200 OK` with a new `accessToken`.
-- The server sets a new refresh token cookie if refresh token rotation is implemented.
-- The old refresh token is revoked and cannot be reused.
+- HTTP `403 Forbidden`
+- `EMAIL_NOT_VERIFIED` error.
 
-### 7. Logout
+This test requires an account whose email address has not been verified.
 
-The refresh token is sent automatically from `cookies.txt`.
+#### Test 4: Access an admin endpoint as a regular user
 
-```bash
-curl -i -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/logout
+```powershell
+curl.exe -i "$BASE_URL/api/admin/statistics" `
+  -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-**Expected result:**
+Expected result:
 
-- `204 No Content`.
-- The refresh token is revoked.
-- The refresh token cookie is cleared.
-- Trying to refresh again should return `401 Unauthorized`.
+- HTTP `403 Forbidden`
+- Access denied because the user does not have the `admin` role.
 
-**Note:** The `cookies.txt` file is used only for local testing. Do not commit it to your repository. Add it to `.gitignore`.
+#### Test 5: Access an admin endpoint as an administrator
+
+```powershell
+$ADMIN_TOKEN = "ADMIN_ACCESS_TOKEN"
+
+curl.exe -i "$BASE_URL/api/admin/statistics" `
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Expected result:
+
+- HTTP `200 OK`
+- Administrative statistics are returned.
+
+#### Test 6: Try to access another user's todo
+
+```powershell
+$OTHER_TODO_ID = "ANOTHER_USERS_TODO_ID"
+
+curl.exe -i "$BASE_URL/api/protected-todos/$OTHER_TODO_ID" `
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Expected result:
+
+- The request must not return another user's todo.
+- Depending on the implementation, the API returns `403 Forbidden` or `404 Not Found`.
+
+#### Test 7: Access the API with a deactivated account
+
+```powershell
+curl.exe -i "$BASE_URL/api/profile" `
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Expected result:
+
+- HTTP `403 Forbidden`
+- `ACCOUNT_DEACTIVATED` error.
+
+This test requires an account that has been deactivated by an administrator.
+
+### 4. Security Notes
+
+- Access tokens have a limited lifetime.
+- Refresh tokens are stored as hashes in the database.
+- Refresh token rotation is used to issue new authentication tokens.
+- Deactivating an account revokes its stored refresh tokens.
+- Passwords are stored as bcrypt hashes, never as plaintext.
+- Sensitive user fields, such as password hashes and refresh token hashes, are excluded from normal API responses.
+- Admin operations require both authentication and the appropriate role.
+- Ownership checks are performed on the server side.
+- Helmet is used to configure HTTP security headers.
+- CORS restricts browser access to the configured frontend origin.
+- Rate limiting protects authentication and administrative write endpoints from excessive requests.
+
+**Note:** The endpoint paths in these examples should match the paths configured in the Express routers. The test cases for unverified and deactivated accounts require separate test users with the corresponding account states.
