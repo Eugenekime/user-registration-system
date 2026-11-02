@@ -13,7 +13,7 @@ import {
 import {
   deleteTodoController,
   getAllTodosController,
-  getTodoStatusController,
+  getTodoStatsController,
   postTodoController,
   putTodoController,
 } from '../controller/todoController.js';
@@ -38,7 +38,7 @@ router.post(
 );
 
 router.put(
-  '/protected/todos',
+  '/protected/todos/:id',
   authenticateToken,
   requireEmailVerified,
   ...paramIdValidation,
@@ -48,7 +48,7 @@ router.put(
 );
 
 router.delete(
-  '/protected/todos',
+  '/protected/todos/:id',
   authenticateToken,
   requireEmailVerified,
   ...paramIdValidation,
@@ -57,9 +57,9 @@ router.delete(
   deleteTodoController
 );
 router.get(
-  '/protected/todos/status',
+  '/protected/todos/stats',
   authenticateToken,
   requireEmailVerified,
-  getTodoStatusController
+  getTodoStatsController
 );
 export default router;

@@ -3,7 +3,7 @@ import { AppError } from '../utils/AppError.js';
 import {
   deleteTodoService,
   getAllTodoService,
-  getTodoStatusService,
+  getTodoStatsService,
   postTodoService,
   putTodoService,
 } from '../services/todoService.js';
@@ -153,7 +153,7 @@ export async function deleteTodoController(
   }
 }
 
-export async function getTodoStatusController(
+export async function getTodoStatsController(
   req: Request,
   res: Response,
   next: NextFunction
@@ -166,19 +166,8 @@ export async function getTodoStatusController(
         'INVALID_ACCESS_TOKEN'
       );
     }
-    if (!req.params.id) {
-      throw new AppError('Todo ID is required', 400, 'TODO_ID_REQUIRED');
-    }
 
-    if (typeof req.params.id !== 'string') {
-      throw new AppError(
-        'Todo ID must be string',
-        400,
-        'TODO_ID_MUST_BE_STRING'
-      );
-    }
-
-    const status = await getTodoStatusService(req.user.sub, req.params.id);
+    const status = await getTodoStatsService(req.user.sub);
     return res.status(200).json({
       success: true,
       data: status,

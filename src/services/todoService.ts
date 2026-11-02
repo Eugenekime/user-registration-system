@@ -114,13 +114,11 @@ export async function deleteTodoService(userId: string, todoId: string) {
   return deletedTodo;
 }
 
-export async function getTodoStatusService(userId: string, todoId: string) {
+export async function getTodoStatsService(userId: string) {
   if (!mongoose.isValidObjectId(userId)) {
     throw new AppError('Invalid user ID', 400, 'INVALID_USER_ID');
   }
-  if (!mongoose.isValidObjectId(todoId)) {
-    throw new AppError('Invalid todo ID', 400, 'INVALID_TODO_ID');
-  }
+
   const [total, completed] = await Promise.all([
     Todo.countDocuments({ userId }),
 
